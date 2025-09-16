@@ -29,11 +29,14 @@ services:
       - phoenix
     env_file:
       - .env
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     ports:
       - "8000:8000"
     volumes:
       - ./rag_docs:/app/rag_docs
-      
+    command: ["python", "server.py"]
+
   prometheus:
     image: prom/prometheus:latest
     volumes:
@@ -42,7 +45,7 @@ services:
       - "9090:9090"
     depends_on:
       - app
-      - phoenix      
+      - phoenix
 
 volumes:
   database_data:
