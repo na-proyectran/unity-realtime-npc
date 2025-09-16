@@ -1,0 +1,49 @@
+services:
+  phoenix:
+    image: arizephoenix/phoenix:11.22
+    depends_on:
+      - db
+    ports:
+      - "6006:6006"   # UI de Phoenix
+      - "4317:4317"   # OTLP gRPC
+      # - "4318:4318" # OTLP HTTP (HTTP/protobuf)
+      # - "9090:9090" # [Optional] PROMETHEUS PORT IF ENABLED
+    environment:
+      PHOENIX_SQL_DATABASE_URL: postgresql://postgres:postgres@db:5432/postgres
+      PHOENIX_DEFAULT_RETENTION_POLICY_DAYS: 30
+      PHOENIX_ENABLE_PROMETHEUS: false
+
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - database_data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    depends_on:
+      - phoenix
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./rag_docs:/app/rag_docs
+      
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - app
+      - phoenix      
+
+volumes:
+  database_data:
+    driver: local
