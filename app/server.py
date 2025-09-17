@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from typing_extensions import assert_never
 
@@ -377,6 +377,10 @@ async def read_index():
 @app.get("/viewer")
 async def read_viewer():
     return FileResponse("static/viewer.html", media_type="text/html")
+
+@app.get("/health")
+async def health():
+    return JSONResponse(content={"status": "ok"})
 
 if __name__ == "__main__":
     import uvicorn
