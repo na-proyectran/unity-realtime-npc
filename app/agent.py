@@ -82,7 +82,7 @@ triage_agent = RealtimeAgent(
         f"{RECOMMENDED_PROMPT_PREFIX} "
         "You are a helpful triaging agent. You can use your tools to delegate questions to other appropriate agents."
     ),
-    handoffs=[faq_agent, realtime_handoff(seat_booking_agent)],
+    handoffs=[realtime_handoff(faq_agent), realtime_handoff(seat_booking_agent)],
 )
 
 faq_agent.handoffs.append(triage_agent)
