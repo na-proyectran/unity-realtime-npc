@@ -1,27 +1,64 @@
 services:
-  phoenix:
-    image: arizephoenix/phoenix:11.22
-    depends_on:
-      - db
-    ports:
-      - "6006:6006"   # UI de Phoenix
-      - "4317:4317"   # OTLP gRPC
-      # - "4318:4318" # OTLP HTTP (HTTP/protobuf)
-      # - "9090:9090" # [Optional] PROMETHEUS PORT IF ENABLED
-    environment:
-      PHOENIX_SQL_DATABASE_URL: postgresql://postgres:postgres@db:5432/postgres
-      PHOENIX_DEFAULT_RETENTION_POLICY_DAYS: 30
-      PHOENIX_ENABLE_PROMETHEUS: false
-
-  db:
+  postgres:
     image: postgres:16
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: postgres
     volumes:
       - database_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - unity
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  pgadmin:
+    image: dpage/pgadmin4:9.8.0
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com   # cámbialo
+      PGADMIN_DEFAULT_PASSWORD: admin    # cámbialo
+    ports:
+      - "5050:80"   # http://localhost:5050
+    depends_on:
+      - postgres
+    networks:
+      - unity
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./servers.json:/pgadmin4/pg_servers.json
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  phoenix:
+    image: arizephoenix/phoenix:11.22
+    depends_on:
+      - postgres
+    ports:
+      - "6006:6006"   # UI de Phoenix
+      - "4317:4317"   # OTLP gRPC
+      # - "4318:4318" # OTLP HTTP (HTTP/protobuf)
+      # - "9090:9090" # [Optional] PROMETHEUS PORT IF ENABLED
+    expose:
+      - "9090"        # <--- métricas Prometheus (solo dentro de la red Docker)
+    environment:
+      PHOENIX_SQL_DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres
+      PHOENIX_DEFAULT_RETENTION_POLICY_DAYS: 30
+      PHOENIX_ENABLE_PROMETHEUS: true
+    restart: unless-stopped
+    networks:
+      - unity
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
 
   app:
     build: .
@@ -31,33 +68,88 @@ services:
       - .env
     environment:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"   # Nginx hace el proxy (solo dentro de la red Docker)
     volumes:
       - ./rag_docs:/app/rag_docs
     command: ["python", "server.py"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    networks:
+      - unity
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
 
-  tunnel:
-    image: pinggy/pinggy:v0.2.4
+  nginx:
+    image: nginx:1.29.1
     depends_on:
       - app
-    command: >
-      -p 443
-      -R0:app:8000
-      -o StrictHostKeyChecking=no
-      -o ServerAliveInterval=30
-      JgstofijTxF+force@eu.free.pinggy.io
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/ssl/certs:ro
+      - ./certs:/etc/ssl/private:ro
+      - ./app/static:/usr/share/nginx/html:ro
+    ports:
+      - "80:80"    # HTTP
+      - "443:443"  # HTTPS
+    restart: unless-stopped
+    networks:
+      - unity
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
 
   prometheus:
     image: prom/prometheus:v3.5.0
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
-      - "9090:9090"
+      - "9090:9090"   # http://localhost:9090
     depends_on:
       - app
       - phoenix
+    restart: unless-stopped
+    networks:
+      - unity
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    restart: unless-stopped
+    ports:
+      - "3000:3000"   # http://localhost:3000
+    depends_on:
+      - prometheus
+    networks:
+      - unity
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_DEFAULT_APP_MODE: production
+      GF_INSTALL_PLUGINS: grafana-piechart-panel,yesoreyeram-infinity-datasource,camptocamp-prometheus-alertmanager-datasource,volkovlabs-image-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
 
 volumes:
   database_data:
     driver: local
+  pgadmin_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  unity:
+    driver: bridge

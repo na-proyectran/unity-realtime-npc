@@ -124,34 +124,38 @@ class RealtimeDemo {
         };
     }
 
+    async loadConfig() {
+      const response = await fetch('/config.json');
+      return await response.json();
+    }
+
     generateSessionId() {
         return 'session_' + Math.random().toString(36).substr(2, 9);
     }
 
     async connect() {
         try {
-            this.ws = new WebSocket(`ws://localhost:8000/ws/${this.sessionId}`);
+            const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+            const config = await this.loadConfig();
+            const { WS_HOST, WS_PORT } = config;
+            this.ws = new WebSocket(`${proto}://${WS_HOST}:${WS_PORT}/ws/${this.sessionId}`);
 
             this.ws.onopen = () => {
                 this.isConnected = true;
                 this.updateConnectionUI();
                 this.startContinuousCapture();
             };
-
-            this.ws.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                this.handleRealtimeEvent(data);
-            };
-
             this.ws.onclose = () => {
                 this.isConnected = false;
                 this.updateConnectionUI();
             };
-
+            this.ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                this.handleRealtimeEvent(data);
+            };
             this.ws.onerror = (error) => {
                 console.error('WebSocket error:', error);
             };
-
         } catch (error) {
             console.error('Failed to connect:', error);
         }

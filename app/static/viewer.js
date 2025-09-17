@@ -46,6 +46,11 @@ class SessionViewer {
         }
     }
 
+    async loadConfig() {
+      const response = await fetch('/config.json');
+      return await response.json();
+    }
+
     connectToSession(sessionId) {
         if (this.ws) {
             this.ws.close();
@@ -54,21 +59,30 @@ class SessionViewer {
         this.resetView();
         this.status.textContent = 'Connecting...';
         this.status.className = 'status';
-        const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-        this.ws = new WebSocket(`${proto}://${location.host}/ws/${sessionId}/events`);
+        try {
+            const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+            const config = await this.loadConfig();
+            const { WS_HOST, WS_PORT } = config;
+            this.ws = new WebSocket(`${proto}://${WS_HOST}:${WS_PORT}/ws/${sessionId}/events`);
 
-        this.ws.onopen = () => {
-            this.status.textContent = 'Connected';
-            this.status.className = 'status connected';
-        };
-        this.ws.onclose = () => {
-            this.status.textContent = 'Disconnected';
-            this.status.className = 'status disconnected';
-        };
-        this.ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            this.handleRealtimeEvent(data);
-        };
+            this.ws.onopen = () => {
+                this.status.textContent = 'Connected';
+                this.status.className = 'status connected';
+            };
+            this.ws.onclose = () => {
+                this.status.textContent = 'Disconnected';
+                this.status.className = 'status disconnected';
+            };
+            this.ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                this.handleRealtimeEvent(data);
+            };
+            this.ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+        } catch (error) {
+            console.error('Failed to connect:', error);
+        }
     }
 
     handleRealtimeEvent(event) {

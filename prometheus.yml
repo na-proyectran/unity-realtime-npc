@@ -2,7 +2,12 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
-  - job_name: "phoenix"
+  # Autorrecolección de Prometheus
+  - job_name: 'prometheus'
     static_configs:
-      - targets:
-          - phoenix:6006
+      - targets: ['prometheus:9090']
+
+  # Phoenix expone métricas en /metrics en el 9090 interno
+  - job_name: 'phoenix'
+    static_configs:
+      - targets: ['phoenix:9090']
