@@ -6,6 +6,16 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# Instalar dependencias básicas
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget \
+    curl \
+    ca-certificates \
+    build-essential \
+    gcc \
+    libpq-dev \
+ && rm -rf /var/lib/apt/lists/*
+
 # Actualizar pip
 RUN python -m pip install --upgrade pip
 
