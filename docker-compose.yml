@@ -135,6 +135,13 @@ services:
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_DEFAULT_APP_MODE: production
       GF_INSTALL_PLUGINS: grafana-piechart-panel,yesoreyeram-infinity-datasource,camptocamp-prometheus-alertmanager-datasource,volkovlabs-image-panel
+      # --- SMTP (deshabilitado por ahora) ---
+      # GF_SMTP_ENABLED: "true"
+      # GF_SMTP_HOST: smtp.example.com:587
+      # GF_SMTP_USER: user@example.com
+      # GF_SMTP_PASSWORD: yourpassword
+      # GF_SMTP_FROM_ADDRESS: grafana@example.com
+      # GF_SMTP_SKIP_VERIFY: "true"
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
@@ -153,3 +160,4 @@ volumes:
 networks:
   unity:
     driver: bridge
+    name: unity_network

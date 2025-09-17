@@ -6,7 +6,7 @@ import struct
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from typing_extensions import assert_never
@@ -381,6 +381,13 @@ async def read_viewer():
 @app.get("/health")
 async def health():
     return JSONResponse(content={"status": "ok"})
+
+@app.post("/alerts")
+async def receive_alerts(request: Request):
+    payload = await request.json()
+    print("🔔 Alerta recibida:", payload)
+    # Aquí puedes: guardar en DB, enviar a Slack, disparar un job, etc.
+    return {"status": "ok"}
 
 if __name__ == "__main__":
     import uvicorn

@@ -1,0 +1,22 @@
+apiVersion: 1
+contactPoints:
+  - orgId: 1
+    name: default-webhook
+    receivers:
+      - uid: webhook-default
+        type: webhook
+        settings:
+          url: http://localhost:9001/alerts
+          httpMethod: POST
+          maxAlerts: 5
+
+  # Contact point de email definido pero inhabilitado
+  - orgId: 1
+    name: ops-email
+    disableProvenance: true   # <- evita errores si no hay SMTP
+    receivers:
+      - uid: email-ops
+        type: email
+        disableProvenance: true
+        settings:
+          addresses: admin@admin.com

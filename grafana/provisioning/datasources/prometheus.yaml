@@ -1,0 +1,27 @@
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    uid: prometheus            # ← UID explícito y estable
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    jsonData:
+      httpMethod: POST
+    editable: false
+
+  # (opc) si luego usas Alertmanager:
+  # - name: Alertmanager
+  #   uid: alertmanager
+  #   type: camptocamp-prometheus-alertmanager-datasource
+  #   access: proxy
+  #   url: http://prometheus:9093
+  #   editable: false
+
+  # (opc) Infinity para JSON/CSV:
+  # - name: Infinity
+  #   uid: infinity
+  #   type: yesoreyeram-infinity-datasource
+  #   access: proxy
+  #   editable: true
+

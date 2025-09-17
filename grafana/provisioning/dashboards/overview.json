@@ -1,0 +1,64 @@
+{
+  "title": "Overview",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Targets UP",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 6 },
+      "targets": [{ "expr": "sum(up)", "refId": "A" }]
+    },
+    {
+      "type": "gauge",
+      "title": "Uso de disco DB (%)",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 6 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "min": 0, "max": 100 },
+      "targets": [{ "expr": "database_disk_usage_ratio * 100", "refId": "A" }]
+    },
+    {
+      "type": "stat",
+      "title": "DB insertions blocked (0/1)",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 6 },
+      "targets": [{ "expr": "database_insertions_blocked", "refId": "A" }]
+    },
+    {
+      "type": "stat",
+      "title": "Rate limiter throttles totales (5m)",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 6 },
+      "targets": [{ "expr": "increase(rate_limiter_throttles_total[5m])", "refId": "A" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU % (phoenix)",
+      "gridPos": { "x": 0, "y": 6, "w": 12, "h": 8 },
+      "targets": [{ "expr": "cpu_usage_percent", "refId": "A" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "Memoria residente MB (phoenix)",
+      "gridPos": { "x": 12, "y": 6, "w": 12, "h": 8 },
+      "targets": [{ "expr": "process_resident_memory_bytes / 1024 / 1024", "refId": "A" }]
+    },
+    {
+      "type": "piechart",
+      "title": "UP por job",
+      "gridPos": { "x": 0, "y": 14, "w": 10, "h": 8 },
+      "targets": [{ "expr": "sum by (job) (up)", "refId": "A" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "FDs abiertos (phoenix)",
+      "gridPos": { "x": 10, "y": 14, "w": 7, "h": 8 },
+      "targets": [{ "expr": "process_open_fds", "refId": "A" }]
+    },
+    {
+      "type": "stat",
+      "title": "JWT tokens activos",
+      "gridPos": { "x": 17, "y": 14, "w": 7, "h": 8 },
+      "targets": [{ "expr": "jwt_store_tokens_active", "refId": "A" }]
+    }
+  ]
+}
