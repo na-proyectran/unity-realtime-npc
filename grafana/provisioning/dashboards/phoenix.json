@@ -1,0 +1,71 @@
+{
+  "title": "Phoenix (App)",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "CPU % (phoenix)",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "targets": [{ "expr": "cpu_usage_percent", "refId": "A" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "Memoria por tipo (MB)",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "megabytes" } },
+      "options": { "legend": { "displayMode": "list" } },
+      "targets": [
+        { "expr": "memory_usage_bytes{type=\"virtual\"} / 1024 / 1024", "refId": "A" },
+        { "expr": "process_resident_memory_bytes / 1024 / 1024", "refId": "B" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "GC collections por generación (rate 5m)",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "options": { "legend": { "displayMode": "list" } },
+      "targets": [
+        { "expr": "rate(python_gc_collections_total{generation=\"0\"}[5m])", "refId": "A" },
+        { "expr": "rate(python_gc_collections_total{generation=\"1\"}[5m])", "refId": "B" },
+        { "expr": "rate(python_gc_collections_total{generation=\"2\"}[5m])", "refId": "C" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Objetos GC recogidos (rate 5m)",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "targets": [
+        { "expr": "rate(python_gc_objects_collected_total{generation=\"0\"}[5m])", "refId": "A" },
+        { "expr": "rate(python_gc_objects_collected_total{generation=\"1\"}[5m])", "refId": "B" },
+        { "expr": "rate(python_gc_objects_collected_total{generation=\"2\"}[5m])", "refId": "C" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Bulk loader: inserciones (total)",
+      "gridPos": { "x": 0, "y": 16, "w": 6, "h": 6 },
+      "targets": [{ "expr": "bulk_loader_span_insertions_total", "refId": "A" }]
+    },
+    {
+      "type": "stat",
+      "title": "Bulk loader: evaluaciones (total)",
+      "gridPos": { "x": 6, "y": 16, "w": 6, "h": 6 },
+      "targets": [{ "expr": "bulk_loader_evaluation_insertions_total", "refId": "A" }]
+    },
+    {
+      "type": "stat",
+      "title": "Bulk loader: excepciones (total)",
+      "gridPos": { "x": 12, "y": 16, "w": 6, "h": 6 },
+      "targets": [{ "expr": "bulk_loader_exceptions_total", "refId": "A" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "Throttles (rate 5m)",
+      "gridPos": { "x": 18, "y": 16, "w": 6, "h": 6 },
+      "targets": [{ "expr": "rate(rate_limiter_throttles_total[5m])", "refId": "A" }]
+    }
+  ]
+}

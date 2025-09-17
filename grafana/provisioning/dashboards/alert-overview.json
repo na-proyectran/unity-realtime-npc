@@ -1,0 +1,57 @@
+{
+  "title": "Alert Overview",
+  "uid": "alert-overview",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "panels": [
+    {
+      "type": "alertlist",
+      "title": "Active Alerts",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 10 },
+      "options": {
+        "show": "current",
+        "sortOrder": 1,
+        "stateFilter": {
+          "alerting": true,
+          "noData": true,
+          "ok": false,
+          "pending": true
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Alert States Count",
+      "gridPos": { "x": 0, "y": 10, "w": 6, "h": 6 },
+      "options": {
+        "reduceOptions": { "calcs": ["count"], "fields": "" },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(grafana_alerting_active_alerts)"
+        }
+      ]
+    },
+    {
+      "type": "state-timeline",
+      "title": "Alert State Timeline",
+      "gridPos": { "x": 0, "y": 16, "w": 24, "h": 10 },
+      "options": {
+        "showLegend": true,
+        "rowHeight": 20
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "grafana_alerting_rule_evaluation_duration_seconds"
+        }
+      ]
+    }
+  ]
+}
