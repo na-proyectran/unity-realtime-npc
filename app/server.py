@@ -39,6 +39,7 @@ class RealtimeWebSocketManager:
         self.session_contexts: dict[str, Any] = {}
         self.websockets: dict[str, WebSocket] = {}
         self.listeners: dict[str, set[WebSocket]] = {}
+        self.allowed_raw_types: set[str] = {"transcript_delta"}
 
     async def connect(self, websocket: WebSocket, session_id: str):
         await websocket.accept()
@@ -109,6 +110,8 @@ class RealtimeWebSocketManager:
 
             async for event in session:
                 event_data = await self._serialize_event(event)
+                if event_data is None:
+                    continue
                 await websocket.send_text(json.dumps(event_data))
                 listeners = self.listeners.get(session_id, set())
                 for ws in list(listeners):
@@ -171,9 +174,16 @@ class RealtimeWebSocketManager:
                 {"name": result.guardrail.name} for result in event.guardrail_results
             ]
         elif event.type == "raw_model_event":
-            base_event["raw_model_event"] = {
-                "type": event.data.type,
-            }
+            data_type = getattr(event.data, "type", None)
+            if data_type not in self.allowed_raw_types:
+                return None
+            if data_type == "transcript_delta":
+                base_event["type"] = "transcript_delta"
+                base_event["item_id"] = getattr(event.data, "item_id", None)
+                base_event["delta"] = getattr(event.data, "delta", "")
+                base_event["response_id"] = getattr(event.data, "response_id", None)
+            else:
+                base_event["type"] = data_type
         elif event.type == "error":
             base_event["error"] = str(event.error) if hasattr(event, "error") else "Unknown error"
         elif event.type == "input_audio_timeout_triggered":

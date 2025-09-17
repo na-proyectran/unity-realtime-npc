@@ -18,6 +18,7 @@ class RealtimeDemo {
         this.playbackFadeSec = 0.02; // ~20ms fade to reduce clicks
         this.messageNodes = new Map(); // item_id -> DOM node
         this.seenItemIds = new Set(); // item_id set for append-only syncing
+        this.partialTranscripts = new Map();
 
         this.initializeElements();
         this.setupEventListeners();
@@ -355,8 +356,51 @@ class RealtimeDemo {
                     this.addMessageFromItem(event.item);
                 }
                 break;
+            case 'transcript_delta':
+                this.handleTranscriptDelta(event);
+                break;
         }
     }
+
+    handleTranscriptDelta(event) {
+        if (!event) return;
+
+        const itemId = event.item_id ?? event.raw_model_event?.item_id;
+        if (!itemId) return;
+
+        const deltaValue = event.delta ?? event.raw_model_event?.delta ?? '';
+        if (typeof deltaValue !== 'string' || deltaValue.length === 0) return;
+
+        const current = this.partialTranscripts.get(itemId) || '';
+        const updated = current + deltaValue;
+        this.partialTranscripts.set(itemId, updated);
+
+        this.upsertAssistantTranscript(itemId, updated);
+    }
+
+    upsertAssistantTranscript(itemId, text) {
+        let node = this.messageNodes.get(itemId);
+        if (!node) {
+            const initialText = text.trim();
+            if (!initialText) {
+                this.partialTranscripts.set(itemId, text);
+                return;
+            }
+            node = this.addMessage('assistant', initialText);
+            if (node) {
+                this.messageNodes.set(itemId, node);
+                this.seenItemIds.add(itemId);
+            }
+            return;
+        }
+
+        const bubble = node.querySelector('.message-bubble');
+        if (bubble) {
+            bubble.textContent = text.trim();
+            this.scrollToBottom();
+        }
+    }
+
     updateLastMessageFromHistory(history) {
         if (!history || !Array.isArray(history) || history.length === 0) return;
         // Find the last message item in history
@@ -377,6 +421,10 @@ class RealtimeDemo {
                 else if (part.type === 'input_text' && part.text) text += part.text;
                 else if ((part.type === 'input_audio' || part.type === 'audio') && part.transcript) text += part.transcript;
             }
+        }
+
+        if (text !== undefined) {
+            this.partialTranscripts.set(itemId, text);
         }
 
         const node = this.messageNodes.get(itemId);
@@ -456,6 +504,7 @@ class RealtimeDemo {
             if (node && item.item_id) {
                 this.messageNodes.set(item.item_id, node);
                 this.seenItemIds.add(item.item_id);
+                this.partialTranscripts.set(item.item_id, content);
             }
         } catch (e) {
             console.error('Failed to add message from item:', e, item);
