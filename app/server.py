@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from typing_extensions import assert_never
 
-from agents.realtime import RealtimeRunner, RealtimeSession, RealtimeSessionEvent
+from agents.realtime import RealtimeRunner, RealtimeSession, RealtimeSessionEvent, RealtimeModelConfig
 from agents.realtime.config import RealtimeUserInputMessage
 from agents.realtime.model_inputs import RealtimeModelSendRawMessage
 
@@ -46,8 +46,164 @@ class RealtimeWebSocketManager:
         self.websockets[session_id] = websocket
 
         agent = get_starting_agent()
-        runner = RealtimeRunner(agent)
-        session_context = await runner.run()
+
+        model_config: RealtimeModelConfig = {
+            "initial_model_settings": {
+                # === Identidad del modelo ===
+                "model_name": "gpt-realtime",
+                #   - "gpt-realtime" (modelo principal en tiempo real)
+
+                # === Contexto / personalidad del NPC ===
+                "instructions": (
+                    "Te llamas Eladia. Eres una recreación virtual de una persona real. "
+                    "Ayudas a resolver dudas a los usuarios que visitan la que fue tu casa. "
+                    "Te encuentras en el museo de 'La casa de los balcones', en Tenerife, La Orotava. "
+                    "Hablas español neutro, con palabras y acento canario (de la época de los años 1920), y te comunicas con una persona de 40 años. "
+                    "Responde de forma amable, breve, inmersiva y coherente con tu entorno."
+                    "Utiliza las herramientas disponibles y nunca inventes las respuestas. Si no sabes algo simplemente di que no lo sabes."
+                ),
+                # (string, opcional) Instrucciones globales (prompt de sistema).
+                # (Prompt, opcional) Prompt inicial o de arranque.
+
+                # === Modalidades y voz ===
+                #"modalities": ["text", "audio"], #<-- falla
+                # {"type": "error",
+                #  "error": "RealtimeError(message=\"Invalid modalities: ['text', 'audio']. Supported combinations are: ['text'] and ['audio'].\", type='invalid_request_error', code='invalid_value', event_id=None, param='session.output_modalities')"}
+                # Posibles valores: lista con:
+                #   - "text": salida/entrada textual
+                #   - "audio": salida/entrada de audio
+
+                "voice": "marin",
+                # Posibles valores: depende de las voces disponibles (ej: "marin", "verse", "sage", "alloy"...).
+                # Cada voz tiene su propio timbre/estilo.
+
+                "speed": 1.0,
+                # (float, opcional) Velocidad del TTS.
+                #   0.5 = mitad de velocidad
+                #   1.0 = normal
+                #   1.5 = más rápido
+
+                # === Audio de entrada/salida ===
+                "input_audio_format": "pcm16",
+                "output_audio_format": "pcm16",
+                # Posibles valores:
+                #   - "pcm16"  (lineal 16-bit PCM, el más común)
+                #   - "mulaw"  (compresión μ-law)
+
+                # === Transcripción de voz a texto (ASR) ===
+                "input_audio_transcription": {
+                    "model": "gpt-4o-mini-transcribe",
+                    # Posibles modelos: "gpt-4o-transcribe", "gpt-4o-mini-transcribe", "whisper-1"
+                    "language": "es",
+                    # Idioma de entrada ("es", "en", "fr", etc.)
+                    "prompt": "",
+                    # Opcional: "prompt" (frase inicial para sesgo de transcripción)
+                },
+
+                # === Reducción de ruido de micrófono ===
+                # "input_audio_noise_reduction": {
+                #     "type": "near_field"
+                #     # Posibles valores:
+                #     #   - "near_field": micrófono cercano (diadema, auriculares)
+                #     #   - "far_field": micrófono ambiente (sala, altavoz)
+                #     #   - None: sin reducción
+                # },
+
+                # === Detección de turnos (diálogo fluido) ===
+                "turn_detection": {
+                    "type": "semantic_vad",
+                    # Posibles valores:
+                    #   - "server_vad": VAD clásico (detección por energía de la voz)
+                    #   - "semantic_vad": considera contenido semántico para cerrar turno
+
+                    # "threshold": 0.5, <-- FIXME: existe en la config pero da error!
+                    # {
+                    #     "type": "error",
+                    #     "error": "RealtimeError(message=\"Unknown parameter: 'session.audio.input.turn_detection.threshold'.\", type='invalid_request_error', code='unknown_parameter', event_id=None, param='session.audio.input.turn_detection.threshold')"
+                    # }
+                    # (float 0.0–1.0) Sensibilidad de detección de voz.
+                    #   Menor valor => más sensible.
+
+                    #"prefix_padding_ms": 300, <-- FIXME: existe en la config pero da error!
+                    # {
+                    #     "type": "error",
+                    #     "error": "RealtimeError(message=\"Unknown parameter: 'session.audio.input.turn_detection.prefix_padding_ms'.\", type='invalid_request_error', code='unknown_parameter', event_id=None, param='session.audio.input.turn_detection.prefix_padding_ms')"
+                    # }
+                    # Milisegundos de audio conservados antes del inicio detectado.
+
+                    #"silence_duration_ms": 500, <-- FIXME: existe en la config pero da error!
+                    # Milisegundos de silencio necesarios para marcar el fin del turno.
+
+                    "interrupt_response": True,
+                    # True = permite interrumpir al NPC si el jugador habla.
+
+                    "create_response": True,
+                    # True = el servidor genera una respuesta automática cuando detecta turno.
+
+                    "eagerness": "auto",
+                    # Posibles valores:
+                    #   - "auto": el modelo ajusta su reactividad dinámicamente
+                    #   - "low": más paciente antes de contestar
+                    #   - "medium": balanceado
+                    #   - "high": responde muy rápido
+
+                    #"idle_timeout_ms": 10000 <-- FIXME: existe en la config pero da error!
+                    # {
+                    #     "type": "error",
+                    #     "error": "RealtimeError(message=\"Unknown parameter: 'session.audio.input.turn_detection.idle_timeout_ms'.\", type='invalid_request_error', code='unknown_parameter', event_id=None, param='session.audio.input.turn_detection.idle_timeout_ms')"
+                    # }
+                    # Milisegundos de inactividad tras los cuales se cierra el turno.
+                },
+
+                # === Tools (herramientas externas) ===
+                #"tool_choice": "auto",
+                # Posibles valores:
+                #   - "auto": el modelo decide si usar herramientas
+                #   - "none": nunca usa tools
+                #   - "required": debe usar una tool en cada turno
+                #   - objeto con política específica (ej: {"type": "function", "name": "consulta_mapa"})
+
+                #"tools": [],
+                # Lista de herramientas definidas con JSON Schema.
+                # Ejemplo: [{"name": "consulta_mapa", "description": "...", "parameters": {...}}]
+
+                # === Traspasos (handoffs) ===
+                #"handoffs": [],
+                # Lista de configuraciones de traspaso (delegar conversación a otro agente).
+                # Útil en orquestaciones más complejas.
+
+                # === Trazabilidad (Tracing) ===
+                # "tracing": {
+                #     "workflow_name": "npc-voice-session",
+                #     # Nombre lógico del flujo de interacción (ej. "sesion-npc-aldeano").
+                #     # Permite agrupar spans/trazas en tu sistema de observabilidad.
+                #
+                #     "group_id": "npc-001",
+                #     # Identificador lógico del grupo/conversación.
+                #     # Ej: ID del NPC, ID de la sesión de juego, etc.
+                #
+                #     "metadata": {
+                #         # Diccionario con pares clave-valor personalizados.
+                #         # Úsalo para enriquecer la traza con contexto útil:
+                #         #   - app: nombre de la app/juego
+                #         #   - env: entorno ("dev", "staging", "prod")
+                #         #   - npc_role: ID de jugador
+                #         #   - npc_location: área del mapa donde está el NPC
+                #         #   - language: Idioma que habla
+                #         "app": "unity-realtime-npc",
+                #         "env": "dev",
+                #         "npc_role": "eladia",
+                #         "npc_location": "casa_balcones",
+                #         "language": "es"
+                #     }
+                # }
+            },
+        }
+
+
+
+        runner = RealtimeRunner(starting_agent=agent)
+        session_context = await runner.run(model_config=model_config)
         session = await session_context.__aenter__()
         self.active_sessions[session_id] = session
         self.session_contexts[session_id] = session_context

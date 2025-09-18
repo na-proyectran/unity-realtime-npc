@@ -6,6 +6,8 @@ from agents.realtime import RealtimeAgent, realtime_handoff
 When running the UI example locally, you can edit this file to change the setup. THe server
 will use the agent returned from get_starting_agent() as the starting agent."""
 
+# TODO: https://cookbook.openai.com/examples/realtime_prompting_guide
+
 ### TOOLS
 
 
