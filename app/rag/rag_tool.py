@@ -63,7 +63,7 @@ def _build_query_engine(top_k: int, top_n: int):
       - postprocessors [SimilarityPostprocessor, LLMRerank]
     """
     index = get_index()
-    postprocessors = [SimilarityPostprocessor(similarity_cutoff=0.50),
+    postprocessors = [SimilarityPostprocessor(similarity_cutoff=0.60),
 #                      LLMRerank(llm=_llm, top_n=top_n, choice_select_prompt=CHOICE_SELECT_PROMPT), #FIXME: muy lento!
                       ]
 

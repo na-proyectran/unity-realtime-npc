@@ -7,7 +7,7 @@ from llama_index.core.node_parser.node_utils import build_nodes_from_splits
 
 class ParagraphSplitter(NodeParser):
     separator: str = Field(
-        default=r'\n{2,}',
+        default=r"(?:\r?\n){2,}",
         description="Regex pattern used to split text into paragraphs (e.g., 2+ newlines)."
     )
     strip_empty: bool = Field(
