@@ -1,13 +1,17 @@
 import os
-from dotenv import load_dotenv
 from datetime import datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+from dotenv import load_dotenv
 
 from agents import function_tool
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 from agents.realtime import RealtimeAgent
 
-from rag.rag_tool import aquery_rag as _aquery_rag
+try:  # pragma: no cover - support running as both module and script
+    from .rag.rag_tool import aquery_rag as _aquery_rag
+except ImportError:  # pragma: no cover - fallback when executed as a script
+    from rag.rag_tool import aquery_rag as _aquery_rag
 
 """
 When running the UI example locally, you can edit this file to change the setup. The server

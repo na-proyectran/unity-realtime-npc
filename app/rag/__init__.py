@@ -22,7 +22,7 @@ from qdrant_client.models import (
 from openinference.instrumentation.llama_index import LlamaIndexInstrumentor
 from phoenix.otel import register
 
-from ParagraphSplitter import ParagraphSplitter
+from .ParagraphSplitter import ParagraphSplitter
 
 load_dotenv()
 
