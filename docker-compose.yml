@@ -71,7 +71,7 @@ services:
     expose:
       - "8000"   # Nginx hace el proxy (solo dentro de la red Docker)
     volumes:
-      - ./rag_docs:/app/rag_docs
+      - ./app/rag_docs:/app/rag_docs
     command: ["python", "server.py"]
     restart: unless-stopped
     healthcheck:
