@@ -1,95 +1,96 @@
+import os
+from dotenv import load_dotenv
+from datetime import datetime
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 from agents import function_tool
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
-from agents.realtime import RealtimeAgent, realtime_handoff
+from agents.realtime import RealtimeAgent
+
+from rag.rag_tool import aquery_rag as _aquery_rag
 
 """
-When running the UI example locally, you can edit this file to change the setup. THe server
+When running the UI example locally, you can edit this file to change the setup. The server
 will use the agent returned from get_starting_agent() as the starting agent."""
 
 # TODO: https://cookbook.openai.com/examples/realtime_prompting_guide
-
+load_dotenv()
+TIMEZONE = os.getenv("TIMEZONE", "Atlantic/Canary")
 ### TOOLS
+
+@function_tool(
+    name_override="get_current_time", description_override="Tool to get current time (hour and minutes)."
+)
+async def get_current_time() -> dict:
+    """
+    Devuelve la hora actual en formato HH:MM y la zona horaria configurada.
+    """
+    try:
+        tz = ZoneInfo(TIMEZONE)
+    except ZoneInfoNotFoundError:
+        print(f"No time zone found with key {TIMEZONE}, falling back to UTC")
+        tz = ZoneInfo("UTC")
+
+    now = datetime.now(tz)
+    h_str = now.strftime("%H")
+    m_str = now.strftime("%M")
+    return {
+        "current_hour": h_str,
+        "current_minutes": m_str,
+        "timezone": TIMEZONE
+    }
+
+@function_tool(
+    name_override="get_current_date", description_override="Tool to get current date (day and month)."
+)
+def get_current_date() -> dict:
+    """
+    Devuelve la fecha actual en formato DD:MM y la zona horaria configurada.
+    """
+    try:
+        tz = ZoneInfo(TIMEZONE)
+    except ZoneInfoNotFoundError:
+        print(f"No time zone found with key {TIMEZONE}, falling back to UTC")
+        tz = ZoneInfo("UTC")
+
+    now = datetime.now(tz)
+    d_str = now.strftime("%d")
+    m_str = now.strftime("%m")
+    return {
+        "current_day": d_str,
+        "current_month": m_str,
+        "timezone": TIMEZONE
+    }
 
 
 @function_tool(
-    name_override="faq_lookup_tool", description_override="Lookup frequently asked questions."
+    name_override="get_weather", description_override="Tool to get weather in certain city."
 )
-async def faq_lookup_tool(question: str) -> str:
-    if "bag" in question or "baggage" in question:
-        return (
-            "You are allowed to bring one bag on the plane. "
-            "It must be under 50 pounds and 22 inches x 14 inches x 9 inches."
-        )
-    elif "seats" in question or "plane" in question:
-        return (
-            "There are 120 seats on the plane. "
-            "There are 22 business class seats and 98 economy seats. "
-            "Exit rows are rows 4 and 16. "
-            "Rows 5-8 are Economy Plus, with extra legroom. "
-        )
-    elif "wifi" in question:
-        return "We have free wifi on the plane, join Airline-Wifi"
-    return "I'm sorry, I don't know the answer to that question."
-
-
-@function_tool
-async def update_seat(confirmation_number: str, new_seat: str) -> str:
-    """
-    Update the seat for a given confirmation number.
-
-    Args:
-        confirmation_number: The confirmation number for the flight.
-        new_seat: The new seat to update to.
-    """
-    return f"Updated seat to {new_seat} for confirmation number {confirmation_number}"
-
-
-@function_tool
 def get_weather(city: str) -> str:
     """Get the weather in a city."""
+    # TODO: use external API
     return f"The weather in {city} is sunny."
 
-
-faq_agent = RealtimeAgent(
-    name="FAQ Agent",
-    handoff_description="A helpful agent that can answer questions about the airline.",
-    instructions=f"""{RECOMMENDED_PROMPT_PREFIX}
-    You are an FAQ agent. If you are speaking to a customer, you probably were transferred to from the triage agent.
-    Use the following routine to support the customer.
-    # Routine
-    1. Identify the last question asked by the customer.
-    2. Use the faq lookup tool to answer the question. Do not rely on your own knowledge.
-    3. If you cannot answer the question, transfer back to the triage agent.""",
-    tools=[faq_lookup_tool],
+@function_tool(
+    name_override="query_rag", description_override="Tool to get info from 'Casa de los Balcones' museum."
 )
+async def query_rag(query: str, top_k: int = 10, top_n: int = 3) -> str:
+    """Async wrapper around :func:`rag.rag_tool.aquery_rag`."""
 
-seat_booking_agent = RealtimeAgent(
-    name="Seat Booking Agent",
-    handoff_description="A helpful agent that can update a seat on a flight.",
-    instructions=f"""{RECOMMENDED_PROMPT_PREFIX}
-    You are a seat booking agent. If you are speaking to a customer, you probably were transferred to from the triage agent.
-    Use the following routine to support the customer.
-    # Routine
-    1. Ask for their confirmation number.
-    2. Ask the customer what their desired seat number is.
-    3. Use the update seat tool to update the seat on the flight.
-    If the customer asks a question that is not related to the routine, transfer back to the triage agent. """,
-    tools=[update_seat],
-)
+    response = await _aquery_rag(query=query, top_k=top_k, top_n=top_n)
+    return str(response)
 
-triage_agent = RealtimeAgent(
+
+agent = RealtimeAgent(
     name="Triage Agent",
     handoff_description="A triage agent that can delegate a customer's request to the appropriate agent.",
     instructions=(
         f"{RECOMMENDED_PROMPT_PREFIX} "
         "You are a helpful triaging agent. You can use your tools to delegate questions to other appropriate agents."
     ),
-    handoffs=[realtime_handoff(faq_agent), realtime_handoff(seat_booking_agent)],
+    tools=[],
+    handoffs=[],
 )
 
-faq_agent.handoffs.append(triage_agent)
-seat_booking_agent.handoffs.append(triage_agent)
-
-
 def get_starting_agent() -> RealtimeAgent:
-    return triage_agent
+    return agent
