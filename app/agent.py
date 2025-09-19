@@ -7,10 +7,7 @@ from dotenv import load_dotenv
 from agents import function_tool
 from agents.realtime import RealtimeAgent
 
-try:  # pragma: no cover - support running as both module and script
-    from .rag.rag_tool import query_rag as _query_rag
-except ImportError:  # pragma: no cover - fallback when executed as a script
-    from rag.rag_tool import query_rag as _query_rag
+from .rag.rag_tool import aquery_rag as _aquery_rag
 
 """
 When running the UI example locally, you can edit this file to change the setup. The server
@@ -46,7 +43,7 @@ async def get_current_time() -> dict:
 @function_tool(
     name_override="get_current_date", description_override="Tool to get current date (day and month)."
 )
-def get_current_date() -> dict:
+async def get_current_date() -> dict:
     """
     Devuelve la fecha actual en formato DD:MM y la zona horaria configurada.
     """
@@ -69,7 +66,7 @@ def get_current_date() -> dict:
 @function_tool(
     name_override="get_weather", description_override="Tool to get weather in certain city."
 )
-def get_weather(city: str) -> str:
+async def get_weather(city: str) -> str:
     """Get the weather in a city."""
     # TODO: use external API
     return f"The weather in {city} is sunny."
@@ -85,7 +82,7 @@ def get_weather(city: str) -> str:
             "Esta herramienta solo puede utilizarse para cuestiones sobre la 'Casa de los Balcones' y su contexto."
     )
 )
-def query_rag(query: str, top_k: int = 10, top_n: int = 3) -> str:
+async def aquery_rag(query: str, top_k: int = 10, top_n: int = 3) -> str:
     """Return a response from the local RAG index.
 
     Parameters
@@ -97,7 +94,7 @@ def query_rag(query: str, top_k: int = 10, top_n: int = 3) -> str:
     top_n : int, optional
         Number of documents to return after reranking.
     """
-    response = _query_rag(query=query, top_k=top_k, top_n=top_n)
+    response = _aquery_rag(query=query, top_k=top_k, top_n=top_n)
     return str(response)
 
 

@@ -13,7 +13,7 @@ from llama_index.core.prompts import PromptTemplate
 from llama_index.core.vector_stores.types import VectorStoreQueryMode
 from llama_index.llms.openai import OpenAI
 
-from . import get_index
+from .rag_utils import get_index
 
 # Load environment variables
 load_dotenv()

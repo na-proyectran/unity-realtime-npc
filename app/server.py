@@ -4,7 +4,7 @@ import json
 import logging
 import struct
 from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import FileResponse, JSONResponse
@@ -15,18 +15,7 @@ from agents.realtime import RealtimeRunner, RealtimeSession, RealtimeSessionEven
 from agents.realtime.config import RealtimeUserInputMessage
 from agents.realtime.model_inputs import RealtimeModelSendRawMessage
 
-# Import TwilioHandler class - handle both module and package use cases
-if TYPE_CHECKING:
-    # For type checking, use the relative import
-    from .agent import get_starting_agent
-else:
-    # At runtime, try both import styles
-    try:
-        # Try relative import first (when used as a package)
-        from .agent import get_starting_agent
-    except ImportError:
-        # Fall back to direct import (when run as a script)
-        from agent import get_starting_agent
+from .agent import get_starting_agent
 
 
 logging.basicConfig(level=logging.INFO)
