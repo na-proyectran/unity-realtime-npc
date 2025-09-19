@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from typing import Optional
+from typing import Optional, Tuple, Dict, Any
 
 from dotenv import load_dotenv
 from llama_index.callbacks.openinference import OpenInferenceCallbackHandler
@@ -33,6 +33,14 @@ RAG_COLLECTION = os.getenv("RAG_COLLECTION")
 OPENAI_EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL")
 OPENAI_EMBEDDING_SIZE = int(os.getenv("OPENAI_EMBEDDING_SIZE"))
 FASTEMBED_SPARSE_MODEL = os.getenv("FASTEMBED_SPARSE_MODEL")
+# Qdrant connection settings. Prefer URL if provided, otherwise fall back to
+# host/port defaults that work with the docker-compose setup.
+QDRANT_URL = os.getenv("QDRANT_URL")
+QDRANT_HOST = os.getenv("QDRANT_HOST", "qdrant")
+QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
+_grpc_port_env = os.getenv("QDRANT_GRPC_PORT")
+QDRANT_GRPC_PORT = int(_grpc_port_env) if _grpc_port_env else None
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 # Toggle hybrid search (dense + sparse) in Qdrant. When disabled the sparse
 # fastembed model is not loaded and only dense semantic search is performed.
 # Enable Qdrant hybrid search when set to "true". Any other value disables it.
@@ -43,6 +51,43 @@ RAG_DOCS_DIR = os.path.join(BASE_DIR, os.getenv("RAG_DOCS_DIR"))
 print("RAG_DOCS_DIR: ", RAG_DOCS_DIR)
 
 _index: Optional[VectorStoreIndex] = None
+_qdrant_client: Optional[QdrantClient] = None
+_qdrant_async_client: Optional[AsyncQdrantClient] = None
+
+
+def _build_qdrant_client_kwargs() -> Dict[str, Any]:
+    """Prepare keyword arguments for Qdrant clients based on configuration."""
+
+    kwargs: Dict[str, Any] = {}
+    if QDRANT_API_KEY:
+        kwargs["api_key"] = QDRANT_API_KEY
+
+    if QDRANT_URL:
+        kwargs["url"] = QDRANT_URL
+    else:
+        kwargs.update({
+            "host": QDRANT_HOST,
+            "port": QDRANT_PORT,
+        })
+
+    if QDRANT_GRPC_PORT is not None:
+        kwargs["grpc_port"] = QDRANT_GRPC_PORT
+
+    return kwargs
+
+
+def _get_qdrant_clients() -> Tuple[QdrantClient, AsyncQdrantClient]:
+    """Lazily create and cache Qdrant clients."""
+
+    global _qdrant_client, _qdrant_async_client
+
+    if _qdrant_client is None or _qdrant_async_client is None:
+        client_kwargs = _build_qdrant_client_kwargs()
+        _qdrant_client = QdrantClient(**client_kwargs)
+        _qdrant_async_client = AsyncQdrantClient(**client_kwargs)
+
+    return _qdrant_client, _qdrant_async_client
+
 
 def get_index() -> VectorStoreIndex:
     """Load or create the RAG index."""
@@ -60,8 +105,7 @@ def get_index() -> VectorStoreIndex:
 
 
     # see: https://docs.llamaindex.ai/en/stable/examples/vector_stores/qdrant_hybrid/
-    client = QdrantClient(path=":memory:")
-    #aclient = AsyncQdrantClient(path=":memory:")
+    client, aclient = _get_qdrant_clients()
 
     if not client.collection_exists(RAG_COLLECTION):
         create_collection_kwargs = {
@@ -81,7 +125,7 @@ def get_index() -> VectorStoreIndex:
 
     vector_store_kwargs = {
         "client": client,
-        #"aclient": aclient, # no es posible con qdrant en memoria!
+        "aclient": aclient,
         "collection_name": RAG_COLLECTION,
     }
     if RAG_ENABLE_HYBRID:
@@ -108,7 +152,7 @@ def get_index() -> VectorStoreIndex:
                               storage_context=storage,
                               embed_model=embed_model,
                               show_progress=True,
-                              use_async=False) # no es posible con qdrant en memoria!
+                              use_async=False)
     return _index
 
 # Autoload index when the module is imported
