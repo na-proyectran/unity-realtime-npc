@@ -17,7 +17,7 @@ from qdrant_client.models import (
     SparseIndexParams,
 )
 
-from app.rag.ParagraphSplitter import ParagraphSplitter
+from .ParagraphSplitter import ParagraphSplitter
 
 # Cargar variables de entorno
 load_dotenv()

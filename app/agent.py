@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from agents import function_tool
 from agents.realtime import RealtimeAgent
 
-from app.rag.rag_tool import aquery_rag as _aquery_rag
+from .rag.rag_tool import aquery_rag as _aquery_rag
 
 """
 When running the UI example locally, you can edit this file to change the setup. The server

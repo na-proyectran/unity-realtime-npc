@@ -25,7 +25,7 @@ RUN python -m pip install --no-cache-dir "poetry==2.2.0"
 # Copiar el archivo de dependencias primero para aprovechar la caché
 COPY pyproject.toml ./
 
-# Copiar el resto del código
+# Copiar el resto del código manteniendo la estructura de paquetes
 COPY app/ ./
 
 # Instalar dependencias principales sin crear virtualenv
@@ -34,4 +34,4 @@ RUN poetry config virtualenvs.create false \
 
 EXPOSE 8000
 
-CMD ["python", "-m", "server.py"]
+CMD ["python", "-m", "app.server.py"]
